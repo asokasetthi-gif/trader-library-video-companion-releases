@@ -1,0 +1,37 @@
+name: Assemble release asset
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  assemble-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out temporary staging branch
+        uses: actions/checkout@v4
+        with:
+          ref: staging-upload
+
+      - name: Assemble and verify Companion archive
+        shell: bash
+        env:
+          ARCHIVE: TraderLibraryVideoCompanion-win32-x64-local-helper-v6-live-origin.zip
+          EXPECTED_SHA256: fa111f10535a3d33e2f39c4f92fe83119bae4abcda7e08e0ce7186699efdbdda
+        run: |
+          cat staging/companion.zip.part-* > "$ARCHIVE"
+          printf '%s  %s\n' "$EXPECTED_SHA256" "$ARCHIVE" | sha256sum --check --strict
+
+      - name: Publish final release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: local-helper-v6-live-origin
+          ARCHIVE: TraderLibraryVideoCompanion-win32-x64-local-helper-v6-live-origin.zip
+        run: |
+          gh release upload "$TAG" \
+            "$ARCHIVE" \
+            "staging/TraderLibraryVideoCompanion-win32-x64-local-helper-v6-live-origin.release.json" \
+            --clobber
