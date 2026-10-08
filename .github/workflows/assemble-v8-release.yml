@@ -1,0 +1,39 @@
+name: Assemble Video Companion v8 release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  assemble-and-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out temporary v8 staging branch
+        uses: actions/checkout@v4
+        with:
+          ref: staging-upload-v8
+
+      - name: Assemble and verify package
+        shell: bash
+        env:
+          ARCHIVE: TraderLibraryVideoCompanion-win32-x64-local-helper-v8-export.zip
+          EXPECTED_SHA256: de4c8c1134c66aaeb7ea43394a1a4a532eaf74400ee564dd3596bdf2e454d04c
+        run: |
+          test "$(find staging -maxdepth 1 -name 'companion.zip.part-*' -type f | wc -l)" -eq 41
+          cat staging/companion.zip.part-* > "$ARCHIVE"
+          printf '%s  %s\n' "$EXPECTED_SHA256" "$ARCHIVE" | sha256sum --check --strict
+          unzip -tq "$ARCHIVE" >/dev/null
+
+      - name: Upload verified assets to draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: local-helper-v8-export
+          ARCHIVE: TraderLibraryVideoCompanion-win32-x64-local-helper-v8-export.zip
+        run: |
+          gh release upload "$TAG" \
+            "$ARCHIVE" \
+            "staging/TraderLibraryVideoCompanion-win32-x64-local-helper-v8-export.release.json" \
+            --clobber
